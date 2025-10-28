@@ -15,11 +15,82 @@ dfs = [
     'df_caja', 'df_bancos', 'df_asientos_ventas', 'df_registro_ventas',
     'df_asientos_compras', 'df_registro_compras', 'df_planilla',
     'df_libro_diario', 'df_balance_general', 'df_eri_funcion',
-    'df_plan_contable'  # <-- NUEVO: Añadimos el Plan de Cuentas Maestro
+    'df_plan_contable'
 ]
-for df in dfs:
-    if df not in st.session_state:
-        st.session_state[df] = None
+# NUEVO: DataFrames limpios que crearemos
+dfs_clean = [
+    'df_plan_contable_clean', 'df_caja_clean', 'df_bancos_clean',
+    'df_asientos_ventas_clean', 'df_asientos_compras_clean'
+]
+for df_key in dfs + dfs_clean:
+    if df_key not in st.session_state:
+        st.session_state[df_key] = None
+
+# --- NUEVAS FUNCIONES DE LIMPIEZA ---
+def limpiar_plan_contable():
+    """Limpia el DataFrame del Plan Contable Maestro."""
+    df = st.session_state.df_plan_contable
+    if df is None:
+        st.error("Error: El Plan Contable no está cargado para limpiar.")
+        return
+    
+    # Hacemos una copia para no modificar el original
+    df_clean = df.copy()
+    
+    # 1. Renombrar columnas para que sean más fáciles de usar
+    df_clean.columns = df_clean.columns.str.strip().str.upper()
+    # Asumimos que las columnas se llaman 'CÓDIGO' y 'CUENTAS' o similar
+    # Vamos a ser más robustos y tomar las dos primeras columnas
+    
+    # Renombrar las dos primeras columnas
+    if len(df_clean.columns) >= 2:
+        df_clean = df_clean.rename(columns={
+            df_clean.columns[0]: 'CODIGO',
+            df_clean.columns[1]: 'DESCRIPCION'
+        })
+    else:
+        st.error("Error: El Plan Contable no tiene las columnas esperadas.")
+        return
+
+    # 2. Quitar filas donde el CODIGO o DESCRIPCION sean NaN (vacías)
+    df_clean = df_clean.dropna(subset=['CODIGO', 'DESCRIPCION'])
+    
+    # 3. Convertir el código a string para cruces seguros
+    df_clean['CODIGO'] = df_clean['CODIGO'].astype(str).str.strip()
+    
+    # 4. Guardar el DataFrame limpio en el session_state
+    st.session_state.df_plan_contable_clean = df_clean
+    st.success("Función `limpiar_plan_contable` ejecutada.")
+    
+def limpiar_caja_bancos():
+    """Limpia los DF de Caja y Bancos (df_caja, df_bancos)."""
+    st.info("Función `limpiar_caja_bancos` (Próximo paso).")
+    # Tareas futuras:
+    # 1. Filtrar filas vacías.
+    # 2. Extraer Nro. Comprobante de la 'DESCRIPCIÓN' (p.ej. "E001-001") a una nueva columna.
+    # 3. Extraer el Monto relevante (DEBE o HABER).
+    # 4. Guardar en st.session_state.df_caja_clean y df_bancos_clean
+    pass
+
+def limpiar_asientos_ventas():
+    """Limpia y estructura el DF de Asientos de Ventas (df_asientos_ventas)."""
+    st.info("Función `limpiar_asientos_ventas` (Próximo paso).")
+    # Tareas futuras:
+    # 1. Parsear la tabla para encontrar los asientos de "Cobro".
+    # 2. Extraer la Cuenta (ej. 104) y el Monto.
+    # 3. Extraer el Nro. de Comprobante.
+    # 4. Guardar en st.session_state.df_asientos_ventas_clean
+    pass
+
+def limpiar_asientos_compras():
+    """Limpia y estructura el DF de Asientos de Compras (df_asientos_compras)."""
+    st.info("Función `limpiar_asientos_compras` (Próximo paso).")
+    # Tareas futuras:
+    # 1. Parsear la tabla para encontrar los asientos de "Pago".
+    # 2. Extraer la Cuenta (ej. 101) y el Monto.
+    # 3. Extraer el Nro. de Comprobante.
+    # 4. Guardar en st.session_state.df_asientos_compras_clean
+    pass
 
 # --- Función para limpiar y mostrar preview (CORREGIDA) ---
 def show_preview(df, title):
@@ -185,7 +256,7 @@ with st.sidebar:
             xls_dev = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_dev = xls_dev.sheet_names
 
-            # --- NUEVO: Selector para Plan Contable Maestro ---
+            # --- Selector para Plan Contable Maestro ---
             sheet_plan_contable = st.selectbox(
                 "Selecciona hoja 'Plan Contable'", 
                 sheet_names_dev, 
@@ -250,13 +321,10 @@ if not archivos_cargados:
     st.image("https://i.imgur.com/gYvD31Y.png", caption="Sube los archivos en la barra lateral", width=300)
 else:
     st.success("¡Archivos cargados! Revisa los previews de los datos.")
-    st.info("Aquí es donde implementaremos la lógica de corrección (Parte 2 del Plan).")
-
-    # Mostramos un preview de los datos cargados
-    st.subheader("Verificación de Datos Cargados")
-
-    col1, col2 = st.columns(2)
     
+    # Mostramos un preview de los datos cargados (los 'sucios' originales)
+    st.subheader("Verificación de Datos Cargados (Originales)")
+    col1, col2 = st.columns(2)
     with col1:
         show_preview(st.session_state.df_caja, "Formato 1.1: Libro Caja (Efectivo)")
         show_preview(st.session_state.df_asientos_ventas, "Asientos de Ventas (A.C.)")
@@ -271,50 +339,44 @@ else:
         show_preview(st.session_state.df_libro_diario, "Libro Diario (Reporte Final)")
         show_preview(st.session_state.df_eri_funcion, "ERI por Función (Reporte Final)")
         
-    # --- NUEVO: Preview del Plan Contable Maestro ---
     show_preview(st.session_state.df_plan_contable, "Plan Contable Maestro (El Diccionario)")
 
-
-    # --- Placeholder para la Lógica de Corrección ---
-    st.subheader("Próximo Paso: Aplicar Lógica de Corrección")
+    st.markdown("---")
     
-    # NUEVO: Verificamos si el Plan Contable está cargado
-    if st.session_state.df_plan_contable is not None:
-        st.success("¡Plan Contable Maestro cargado! Ya podemos empezar a limpiar y corregir.")
+    # --- NUEVO: Sección de Procesamiento (Fase 1) ---
+    st.subheader("Fase 1: Limpieza y Corrección de Datos")
+    
+    # Verificamos que los archivos MÍNIMOS para la corrección estén cargados
+    archivos_minimos_cargados = (
+        st.session_state.df_plan_contable is not None and
+        st.session_state.df_caja is not None and
+        st.session_state.df_bancos is not None and
+        st.session_state.df_asientos_ventas is not None and
+        st.session_state.df_asientos_compras is not None
+    )
+
+    if not archivos_minimos_cargados:
+        st.warning("Por favor, carga TODOS los archivos (1-5), incluyendo el 'Plan Contable', para activar la corrección.")
     else:
-        st.warning("Por favor, carga el 'Plan Contable' (del Uploader 5) para continuar.")
-
-    st.code("""
-# Lógica a implementar (pseudo-código):
-
-# 0. USAR EL PLAN MAESTRO
-#    plan_maestro = st.session_state.df_plan_contable
-#    (Esto nos servirá como diccionario)
-
-# 1. Limpiar datos (quitar NaNs, convertir montos, estandarizar descripciones)
-# ...
-
-# 2. Iterar sobre Asientos de Ventas
-# para cada asiento_venta in df_asientos_ventas:
-#   if es_asiento_de_cobro:
-#     monto = asiento_venta['Monto_Cobrado']
-#     comprobante = asiento_venta['Nro_Comprobante']
-#
-#     # Buscar en CAJA (Formato 1.1)
-#     if comprobante in df_caja['Descripción']:
-#       asiento_venta['Cuenta_Corregida'] = 101 # (Buscar 'Caja' en plan_maestro)
-#
-#     # Buscar en BANCOS (Formato 1.2)
-#     elif comprobante in df_bancos['Descripción']:
-#       asiento_venta['Cuenta_Corregida'] = 104 # (Buscar 'Bancos' en plan_maestro)
-#
-#     else:
-#       asiento_venta['Cuenta_Corregida'] = "ERROR: No Encontrado"
-#
-# # 3. Repetir lógica para Asientos de Compras
-# ...
-
-# 4. Mostrar tabla de asientos corregidos
-# st.dataframe(df_asientos_ventas_corregido)
-    """, language="python")
+        st.info("¡Todos los archivos necesarios están cargados! Listo para procesar.")
+        
+        # El botón que dispara toda la lógica de limpieza
+        if st.button("🧹 Empezar Limpieza y Corrección"):
+            with st.spinner("Procesando... Esto puede tardar un momento..."):
+                # Ejecutamos todas las funciones de limpieza en orden
+                limpiar_plan_contable()
+                limpiar_caja_bancos()
+                limpiar_asientos_ventas()
+                limpiar_asientos_compras()
+            
+            st.success("¡Proceso de limpieza terminado!")
+            
+            # Mostramos un preview de los nuevos DataFrames limpios
+            st.subheader("Resultados de la Limpieza (Datos Limpios)")
+            
+            # Mostraremos el primer DF limpio (Plan Contable)
+            show_preview(st.session_state.df_plan_contable_clean, "Plan Contable Maestro (LIMPIO)")
+            
+            # (Aquí añadiremos los previews de los otros DFs limpios cuando las funciones estén listas)
+            st.info("Próximos pasos: Implementar la lógica en las otras funciones de limpieza.")
 
