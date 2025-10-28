@@ -20,14 +20,20 @@ for df in dfs:
     if df not in st.session_state:
         st.session_state[df] = None
 
-# --- Función para limpiar y mostrar preview ---
+# --- Función para limpiar y mostrar preview (CORREGIDA) ---
 def show_preview(df, title):
     """Muestra un expander con el preview de un DataFrame."""
-    with st.expander(f"Ver Preview: {title}"):
+    # Se abre el expander. 'expanded=False' hace que esté cerrado por defecto.
+    with st.expander(f"Ver Preview: {title}", expanded=False):
+        
+        # --- ESTA ES LA CORRECCIÓN ---
+        # Comprobamos si el DataFrame (df) NO está vacío (is not None)
         if df is not None:
+            # Si tiene datos, muestra el .head()
             st.dataframe(df.head())
         else:
-            st.info("Hoja no cargada.")
+            # Si está vacío (None), muestra un mensaje amigable
+            st.info("Hoja no cargada o aún no seleccionada.")
 
 # --- Barra Lateral (Sidebar) ---
 with st.sidebar:
@@ -41,7 +47,13 @@ with st.sidebar:
 
     if file_caja_bancos:
         try:
-            xls_caja = pd.ExcelFile(file_caja_bancos)
+            # --- LÓGICA DE LECTURA ROBUSTA ---
+            # 1. Leer los bytes del archivo
+            file_bytes = file_caja_bancos.getvalue()
+            # 2. Crear un buffer de bytes en memoria
+            xls_buffer = io.BytesIO(file_bytes)
+            # 3. Pasar el buffer a ExcelFile, forzando el motor 'xlrd' para .xls
+            xls_caja = pd.ExcelFile(xls_buffer, engine='xlrd')
             sheet_names_caja = xls_caja.sheet_names
             
             # Selector para L.CAJA01 (Efectivo)
@@ -53,6 +65,8 @@ with st.sidebar:
                 key="cb_caja"
             )
             if sheet_caja:
+                # Usamos header=8 (fila 9) para L.CAJA01
+                # Leemos del objeto ExcelFile 'xls_caja', no del buffer
                 st.session_state.df_caja = pd.read_excel(xls_caja, sheet_name=sheet_caja, header=8)
                 st.success(f"Hoja '{sheet_caja}' cargada (Caja).")
 
@@ -65,7 +79,8 @@ with st.sidebar:
                 key="cb_bancos"
             )
             if sheet_bancos:
-                st.session_state.df_bancos = pd.read_excel(xls_caja, sheet_name=sheet_bancos, header=9)
+                # Usamos header=8 (fila 9) para L.CAJA02 también
+                st.session_state.df_bancos = pd.read_excel(xls_caja, sheet_name=sheet_bancos, header=8)
                 st.success(f"Hoja '{sheet_bancos}' cargada (Bancos).")
                 
         except Exception as e:
@@ -77,7 +92,11 @@ with st.sidebar:
 
     if file_ventas:
         try:
-            xls_ventas = pd.ExcelFile(file_ventas)
+            # --- LÓGICA DE LECTURA ROBUSTA ---
+            file_bytes = file_ventas.getvalue()
+            xls_buffer = io.BytesIO(file_bytes)
+            # Para .xlsx, el motor por defecto (openpyxl) suele estar bien
+            xls_ventas = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_ventas = xls_ventas.sheet_names
 
             # Selector para Asientos de Ventas (A.C.)
@@ -89,7 +108,8 @@ with st.sidebar:
                 key="cb_asientos_ventas"
             )
             if sheet_asientos_ventas:
-                st.session_state.df_asientos_ventas = pd.read_excel(xls_ventas, sheet_name=sheet_asientos_ventas, header=9)
+                # header=8 (fila 9)
+                st.session_state.df_asientos_ventas = pd.read_excel(xls_ventas, sheet_name=sheet_asientos_ventas, header=8)
                 st.success(f"Hoja '{sheet_asientos_ventas}' cargada (Asientos Venta).")
             
             # Selector para Registro de Ventas (Formato 14.1)
@@ -101,6 +121,7 @@ with st.sidebar:
                 key="cb_reg_ventas"
             )
             if sheet_reg_ventas:
+                # header=8 (fila 9)
                 st.session_state.df_registro_ventas = pd.read_excel(xls_ventas, sheet_name=sheet_reg_ventas, header=8)
                 st.success(f"Hoja '{sheet_reg_ventas}' cargada (Registro Venta).")
 
@@ -113,7 +134,10 @@ with st.sidebar:
 
     if file_compras:
         try:
-            xls_compras = pd.ExcelFile(file_compras)
+            # --- LÓGICA DE LECTURA ROBUSTA ---
+            file_bytes = file_compras.getvalue()
+            xls_buffer = io.BytesIO(file_bytes)
+            xls_compras = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_compras = xls_compras.sheet_names
 
             # Selector para Asientos de Compras (Hoja3)
@@ -125,6 +149,7 @@ with st.sidebar:
                 key="cb_asientos_compras"
             )
             if sheet_asientos_compras:
+                # header=5 (fila 6)
                 st.session_state.df_asientos_compras = pd.read_excel(xls_compras, sheet_name=sheet_asientos_compras, header=5)
                 st.success(f"Hoja '{sheet_asientos_compras}' cargada (Asientos Compra).")
 
@@ -137,6 +162,7 @@ with st.sidebar:
                 key="cb_reg_compras"
             )
             if sheet_reg_compras:
+                # header=8 (fila 9)
                 st.session_state.df_registro_compras = pd.read_excel(xls_compras, sheet_name=sheet_reg_compras, header=8)
                 st.success(f"Hoja '{sheet_reg_compras}' cargada (Registro Compra).")
 
@@ -149,7 +175,10 @@ with st.sidebar:
 
     if file_planilla:
         try:
-            xls_planilla = pd.ExcelFile(file_planilla)
+            # --- LÓGICA DE LECTURA ROBUSTA ---
+            file_bytes = file_planilla.getvalue()
+            xls_buffer = io.BytesIO(file_bytes)
+            xls_planilla = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_planilla = xls_planilla.sheet_names
             
             sheet_planilla = st.selectbox(
@@ -160,7 +189,8 @@ with st.sidebar:
                 key="cb_planilla"
             )
             if sheet_planilla:
-                st.session_state.df_planilla = pd.read_excel(xls_planilla, sheet_name=sheet_planilla, header=10) # El header 10 parece más robusto
+                # header=10 (fila 11)
+                st.session_state.df_planilla = pd.read_excel(xls_planilla, sheet_name=sheet_planilla, header=10)
                 st.success(f"Hoja '{sheet_planilla}' cargada (Planilla).")
         except Exception as e:
             st.error(f"Error al leer Planilla: {e}")
@@ -171,7 +201,10 @@ with st.sidebar:
 
     if file_dev:
         try:
-            xls_dev = pd.ExcelFile(file_dev)
+            # --- LÓGICA DE LECTURA ROBUSTA ---
+            file_bytes = file_dev.getvalue()
+            xls_buffer = io.BytesIO(file_bytes)
+            xls_dev = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_dev = xls_dev.sheet_names
 
             # Selector para Libro Diario (F5.1)
@@ -183,7 +216,8 @@ with st.sidebar:
                 key="cb_diario"
             )
             if sheet_diario:
-                st.session_state.df_libro_diario = pd.read_excel(xls_dev, sheet_name=sheet_diario, header=11)
+                # header=10 (fila 11)
+                st.session_state.df_libro_diario = pd.read_excel(xls_dev, sheet_name=sheet_diario, header=10)
                 st.success(f"Hoja '{sheet_diario}' cargada (Libro Diario).")
 
             # Selector para Balance General
@@ -195,6 +229,7 @@ with st.sidebar:
                 key="cb_balance"
             )
             if sheet_balance:
+                # header=8 (fila 9)
                 st.session_state.df_balance_general = pd.read_excel(xls_dev, sheet_name=sheet_balance, header=8)
                 st.success(f"Hoja '{sheet_balance}' cargada (Balance General).")
 
@@ -207,6 +242,7 @@ with st.sidebar:
                 key="cb_eri"
             )
             if sheet_eri:
+                # header=5 (fila 6)
                 st.session_state.df_eri_funcion = pd.read_excel(xls_dev, sheet_name=sheet_eri, header=5)
                 st.success(f"Hoja '{sheet_eri}' cargada (ERI Función).")
 
