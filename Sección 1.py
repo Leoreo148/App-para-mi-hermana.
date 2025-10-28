@@ -14,7 +14,8 @@ st.set_page_config(
 dfs = [
     'df_caja', 'df_bancos', 'df_asientos_ventas', 'df_registro_ventas',
     'df_asientos_compras', 'df_registro_compras', 'df_planilla',
-    'df_libro_diario', 'df_balance_general', 'df_eri_funcion'
+    'df_libro_diario', 'df_balance_general', 'df_eri_funcion',
+    'df_plan_contable'  # <-- NUEVO: Añadimos el Plan de Cuentas Maestro
 ]
 for df in dfs:
     if df not in st.session_state:
@@ -23,16 +24,10 @@ for df in dfs:
 # --- Función para limpiar y mostrar preview (CORREGIDA) ---
 def show_preview(df, title):
     """Muestra un expander con el preview de un DataFrame."""
-    # Se abre el expander. 'expanded=False' hace que esté cerrado por defecto.
     with st.expander(f"Ver Preview: {title}", expanded=False):
-        
-        # --- ESTA ES LA CORRECCIÓN ---
-        # Comprobamos si el DataFrame (df) NO está vacío (is not None)
         if df is not None:
-            # Si tiene datos, muestra el .head()
             st.dataframe(df.head())
         else:
-            # Si está vacío (None), muestra un mensaje amigable
             st.info("Hoja no cargada o aún no seleccionada.")
 
 # --- Barra Lateral (Sidebar) ---
@@ -47,12 +42,8 @@ with st.sidebar:
 
     if file_caja_bancos:
         try:
-            # --- LÓGICA DE LECTURA ROBUSTA ---
-            # 1. Leer los bytes del archivo
             file_bytes = file_caja_bancos.getvalue()
-            # 2. Crear un buffer de bytes en memoria
             xls_buffer = io.BytesIO(file_bytes)
-            # 3. Pasar el buffer a ExcelFile, forzando el motor 'xlrd' para .xls
             xls_caja = pd.ExcelFile(xls_buffer, engine='xlrd')
             sheet_names_caja = xls_caja.sheet_names
             
@@ -65,8 +56,6 @@ with st.sidebar:
                 key="cb_caja"
             )
             if sheet_caja:
-                # Usamos header=8 (fila 9) para L.CAJA01
-                # Leemos del objeto ExcelFile 'xls_caja', no del buffer
                 st.session_state.df_caja = pd.read_excel(xls_caja, sheet_name=sheet_caja, header=8)
                 st.success(f"Hoja '{sheet_caja}' cargada (Caja).")
 
@@ -79,7 +68,6 @@ with st.sidebar:
                 key="cb_bancos"
             )
             if sheet_bancos:
-                # Usamos header=8 (fila 9) para L.CAJA02 también
                 st.session_state.df_bancos = pd.read_excel(xls_caja, sheet_name=sheet_bancos, header=8)
                 st.success(f"Hoja '{sheet_bancos}' cargada (Bancos).")
                 
@@ -92,10 +80,8 @@ with st.sidebar:
 
     if file_ventas:
         try:
-            # --- LÓGICA DE LECTURA ROBUSTA ---
             file_bytes = file_ventas.getvalue()
             xls_buffer = io.BytesIO(file_bytes)
-            # Para .xlsx, el motor por defecto (openpyxl) suele estar bien
             xls_ventas = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_ventas = xls_ventas.sheet_names
 
@@ -108,7 +94,6 @@ with st.sidebar:
                 key="cb_asientos_ventas"
             )
             if sheet_asientos_ventas:
-                # header=8 (fila 9)
                 st.session_state.df_asientos_ventas = pd.read_excel(xls_ventas, sheet_name=sheet_asientos_ventas, header=8)
                 st.success(f"Hoja '{sheet_asientos_ventas}' cargada (Asientos Venta).")
             
@@ -121,7 +106,6 @@ with st.sidebar:
                 key="cb_reg_ventas"
             )
             if sheet_reg_ventas:
-                # header=8 (fila 9)
                 st.session_state.df_registro_ventas = pd.read_excel(xls_ventas, sheet_name=sheet_reg_ventas, header=8)
                 st.success(f"Hoja '{sheet_reg_ventas}' cargada (Registro Venta).")
 
@@ -134,7 +118,6 @@ with st.sidebar:
 
     if file_compras:
         try:
-            # --- LÓGICA DE LECTURA ROBUSTA ---
             file_bytes = file_compras.getvalue()
             xls_buffer = io.BytesIO(file_bytes)
             xls_compras = pd.ExcelFile(xls_buffer, engine='openpyxl')
@@ -149,7 +132,6 @@ with st.sidebar:
                 key="cb_asientos_compras"
             )
             if sheet_asientos_compras:
-                # header=5 (fila 6)
                 st.session_state.df_asientos_compras = pd.read_excel(xls_compras, sheet_name=sheet_asientos_compras, header=5)
                 st.success(f"Hoja '{sheet_asientos_compras}' cargada (Asientos Compra).")
 
@@ -162,7 +144,6 @@ with st.sidebar:
                 key="cb_reg_compras"
             )
             if sheet_reg_compras:
-                # header=8 (fila 9)
                 st.session_state.df_registro_compras = pd.read_excel(xls_compras, sheet_name=sheet_reg_compras, header=8)
                 st.success(f"Hoja '{sheet_reg_compras}' cargada (Registro Compra).")
 
@@ -175,7 +156,6 @@ with st.sidebar:
 
     if file_planilla:
         try:
-            # --- LÓGICA DE LECTURA ROBUSTA ---
             file_bytes = file_planilla.getvalue()
             xls_buffer = io.BytesIO(file_bytes)
             xls_planilla = pd.ExcelFile(xls_buffer, engine='openpyxl')
@@ -189,7 +169,6 @@ with st.sidebar:
                 key="cb_planilla"
             )
             if sheet_planilla:
-                # header=10 (fila 11)
                 st.session_state.df_planilla = pd.read_excel(xls_planilla, sheet_name=sheet_planilla, header=10)
                 st.success(f"Hoja '{sheet_planilla}' cargada (Planilla).")
         except Exception as e:
@@ -201,11 +180,23 @@ with st.sidebar:
 
     if file_dev:
         try:
-            # --- LÓGICA DE LECTURA ROBUSTA ---
             file_bytes = file_dev.getvalue()
             xls_buffer = io.BytesIO(file_bytes)
             xls_dev = pd.ExcelFile(xls_buffer, engine='openpyxl')
             sheet_names_dev = xls_dev.sheet_names
+
+            # --- NUEVO: Selector para Plan Contable Maestro ---
+            sheet_plan_contable = st.selectbox(
+                "Selecciona hoja 'Plan Contable'", 
+                sheet_names_dev, 
+                index=None, 
+                placeholder="Elige la hoja del Plan de Cuentas...",
+                key="cb_plan"
+            )
+            if sheet_plan_contable:
+                # header=2 (fila 3)
+                st.session_state.df_plan_contable = pd.read_excel(xls_dev, sheet_name=sheet_plan_contable, header=2)
+                st.success(f"Hoja '{sheet_plan_contable}' cargada (Plan Contable Maestro).")
 
             # Selector para Libro Diario (F5.1)
             sheet_diario = st.selectbox(
@@ -216,7 +207,6 @@ with st.sidebar:
                 key="cb_diario"
             )
             if sheet_diario:
-                # header=10 (fila 11)
                 st.session_state.df_libro_diario = pd.read_excel(xls_dev, sheet_name=sheet_diario, header=10)
                 st.success(f"Hoja '{sheet_diario}' cargada (Libro Diario).")
 
@@ -229,7 +219,6 @@ with st.sidebar:
                 key="cb_balance"
             )
             if sheet_balance:
-                # header=8 (fila 9)
                 st.session_state.df_balance_general = pd.read_excel(xls_dev, sheet_name=sheet_balance, header=8)
                 st.success(f"Hoja '{sheet_balance}' cargada (Balance General).")
 
@@ -242,7 +231,6 @@ with st.sidebar:
                 key="cb_eri"
             )
             if sheet_eri:
-                # header=5 (fila 6)
                 st.session_state.df_eri_funcion = pd.read_excel(xls_dev, sheet_name=sheet_eri, header=5)
                 st.success(f"Hoja '{sheet_eri}' cargada (ERI Función).")
 
@@ -259,7 +247,6 @@ archivos_cargados = any(st.session_state[df] is not None for df in dfs)
 
 if not archivos_cargados:
     st.warning("Por favor, carga los archivos Excel en la barra lateral izquierda para comenzar.")
-    # 
     st.image("https://i.imgur.com/gYvD31Y.png", caption="Sube los archivos en la barra lateral", width=300)
 else:
     st.success("¡Archivos cargados! Revisa los previews de los datos.")
@@ -283,14 +270,26 @@ else:
         show_preview(st.session_state.df_registro_compras, "Registro de Compras (Formato 8.1)")
         show_preview(st.session_state.df_libro_diario, "Libro Diario (Reporte Final)")
         show_preview(st.session_state.df_eri_funcion, "ERI por Función (Reporte Final)")
+        
+    # --- NUEVO: Preview del Plan Contable Maestro ---
+    show_preview(st.session_state.df_plan_contable, "Plan Contable Maestro (El Diccionario)")
 
 
     # --- Placeholder para la Lógica de Corrección ---
     st.subheader("Próximo Paso: Aplicar Lógica de Corrección")
-    st.write("Ahora que SÍ podemos cargar los datos correctos, el siguiente paso será tomar los asientos de ventas y compras y cruzarlos con la información de caja y bancos para encontrar y corregir las inconsistencias.")
+    
+    # NUEVO: Verificamos si el Plan Contable está cargado
+    if st.session_state.df_plan_contable is not None:
+        st.success("¡Plan Contable Maestro cargado! Ya podemos empezar a limpiar y corregir.")
+    else:
+        st.warning("Por favor, carga el 'Plan Contable' (del Uploader 5) para continuar.")
 
     st.code("""
 # Lógica a implementar (pseudo-código):
+
+# 0. USAR EL PLAN MAESTRO
+#    plan_maestro = st.session_state.df_plan_contable
+#    (Esto nos servirá como diccionario)
 
 # 1. Limpiar datos (quitar NaNs, convertir montos, estandarizar descripciones)
 # ...
@@ -303,11 +302,11 @@ else:
 #
 #     # Buscar en CAJA (Formato 1.1)
 #     if comprobante in df_caja['Descripción']:
-#       asiento_venta['Cuenta_Corregida'] = 101 # Caja
+#       asiento_venta['Cuenta_Corregida'] = 101 # (Buscar 'Caja' en plan_maestro)
 #
 #     # Buscar en BANCOS (Formato 1.2)
 #     elif comprobante in df_bancos['Descripción']:
-#       asiento_venta['Cuenta_Corregida'] = 104 # Bancos
+#       asiento_venta['Cuenta_Corregida'] = 104 # (Buscar 'Bancos' en plan_maestro)
 #
 #     else:
 #       asiento_venta['Cuenta_Corregida'] = "ERROR: No Encontrado"
